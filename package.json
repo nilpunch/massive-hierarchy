@@ -1,0 +1,12 @@
+{
+  "name": "massive-hierarchy",
+  "version": "0.1.0",
+  "displayName": "Massive ECS Hierarchy",
+  "unity": "2021.2",
+  "description": "Hierarchical relationships for Massive ECS.",
+  "dependencies":
+  {
+    "massive-ecs": "https://github.com/nilpunch/massive-ecs#17.0.0"
+  },
+  "author": "https://github.com/nilpunch"
+}

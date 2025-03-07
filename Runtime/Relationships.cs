@@ -20,9 +20,8 @@
 					UnassignChild(relationship.Parent, entities.GetEntity(id));
 				}
 
-				var children = relationship.Children;
 				var currentChild = relationship.FirstChild;
-				for (int i = 0; i < children; i++)
+				while (currentChild != Entity.Dead)
 				{
 					ref var childRelationship = ref _relationships.Get(currentChild.Id);
 					currentChild = childRelationship.NextSibling;
@@ -30,16 +29,14 @@
 					childRelationship.NextSibling = Entity.Dead;
 					childRelationship.Parent = Entity.Dead;
 				}
-
-				relationship = default;
 			}
 		}
 
+		/// <summary>
+		/// Assigns child as first. Faster then <see cref="AssignChildAsLast"/>.
+		/// </summary>
 		public void AssignChild(Entity parent, Entity child)
 		{
-			_relationships.Assign(parent.Id);
-			_relationships.Assign(child.Id);
-
 			ref var parentRelationship = ref _relationships.Get(parent.Id);
 			ref var childRelationship = ref _relationships.Get(child.Id);
 
@@ -48,7 +45,29 @@
 				return;
 			}
 
-			if (childRelationship.Parent != parent && childRelationship.Parent != Entity.Dead)
+			if (childRelationship.Parent != Entity.Dead)
+			{
+				UnassignChild(childRelationship.Parent, child);
+			}
+
+			childRelationship.Parent = parent;
+
+			var nextChild = parentRelationship.FirstChild;
+			parentRelationship.FirstChild = child;
+			childRelationship.NextSibling = nextChild;
+		}
+
+		public void AssignChildAsLast(Entity parent, Entity child)
+		{
+			ref var parentRelationship = ref _relationships.Get(parent.Id);
+			ref var childRelationship = ref _relationships.Get(child.Id);
+
+			if (childRelationship.Parent == parent)
+			{
+				return;
+			}
+
+			if (childRelationship.Parent != Entity.Dead)
 			{
 				UnassignChild(childRelationship.Parent, child);
 			}
@@ -62,48 +81,64 @@
 			else
 			{
 				var currentChild = parentRelationship.FirstChild;
-				var children = parentRelationship.Children;
-				for (int i = 0; i < children - 1; i++)
+				ref var currentRelationship = ref _relationships.Get(currentChild.Id);
+				while (currentRelationship.NextSibling != Entity.Dead)
 				{
-					currentChild = _relationships.Get(currentChild.Id).NextSibling;
+					currentChild = currentRelationship.NextSibling;
+					currentRelationship = ref _relationships.Get(currentChild.Id);
 				}
-				_relationships.Get(currentChild.Id).NextSibling = child;
+				currentRelationship.NextSibling = child;
 				childRelationship.PrevSibling = currentChild;
 			}
 		}
 
 		public void UnassignChild(Entity parent, Entity child)
 		{
-			_relationships.Assign(parent.Id);
-			_relationships.Assign(child.Id);
+			ref var childRelationship = ref _relationships.Get(child.Id);
 
-			ref var parentRelationship = ref _relationships.Get(parent.Id);
-
-			var currentChild = parentRelationship.FirstChild;
-			var children = parentRelationship.Children;
-			for (int i = 0; i < children; i++)
+			if (childRelationship.Parent != parent)
 			{
-				var currentRelationship = _relationships.Get(currentChild.Id);
-				if (currentChild == child)
-				{
-					if (currentRelationship.PrevSibling == Entity.Dead)
-					{
-						parentRelationship.FirstChild = currentRelationship.NextSibling;
-						_relationships.Get(currentRelationship.NextSibling.Id).PrevSibling = Entity.Dead;
-					}
-					else
-					{
-						_relationships.Get(currentRelationship.PrevSibling.Id).NextSibling = currentRelationship.NextSibling;
-						_relationships.Get(currentRelationship.NextSibling.Id).PrevSibling = currentRelationship.PrevSibling;
-					}
-					currentRelationship.PrevSibling = Entity.Dead;
-					currentRelationship.NextSibling = Entity.Dead;
-					currentRelationship.Parent = Entity.Dead;
-					parentRelationship.Children -= 1;
-					return;
-				}
-				currentChild = currentRelationship.NextSibling;
+				return;
 			}
+
+			if (childRelationship.PrevSibling != Entity.Dead)
+			{
+				_relationships.Get(childRelationship.PrevSibling.Id).NextSibling = childRelationship.NextSibling;
+			}
+			else
+			{
+				_relationships.Get(parent.Id).FirstChild = childRelationship.NextSibling;
+			}
+
+			if (childRelationship.NextSibling != Entity.Dead)
+			{
+				_relationships.Get(childRelationship.NextSibling.Id).PrevSibling = childRelationship.PrevSibling;
+			}
+
+			childRelationship.PrevSibling = Entity.Dead;
+			childRelationship.NextSibling = Entity.Dead;
+			childRelationship.Parent = Entity.Dead;
+		}
+
+		public Entity GetLastChild(Entity parent)
+		{
+			ref var relationship = ref _relationships.Get(parent.Id);
+
+			if (relationship.FirstChild == Entity.Dead)
+			{
+				return Entity.Dead;
+			}
+
+			var child = relationship.FirstChild;
+			ref var childRelationship = ref _relationships.Get(relationship.FirstChild.Id);
+
+			while (childRelationship.NextSibling != Entity.Dead)
+			{
+				child = childRelationship.NextSibling;
+				childRelationship = ref _relationships.Get(child.Id);
+			}
+
+			return child;
 		}
 	}
 }

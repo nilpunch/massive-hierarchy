@@ -1,5 +1,10 @@
-﻿namespace Massive.Hierarchy
+﻿using Unity.IL2CPP.CompilerServices;
+
+namespace Massive.Hierarchy
 {
+	[Il2CppSetOption(Option.NullChecks, false)]
+	[Il2CppSetOption(Option.ArrayBoundsChecks, false)]
+	[Il2CppSetOption(Option.DivideByZeroChecks, false)]
 	public class Relationships
 	{
 		private readonly DataSet<Relationship> _relationships;

@@ -4,33 +4,32 @@ namespace Massive
 {
 	[Il2CppSetOption(Option.NullChecks, false)]
 	[Il2CppSetOption(Option.ArrayBoundsChecks, false)]
-	[Il2CppSetOption(Option.DivideByZeroChecks, false)]
 	public class Relations
 	{
 		private Entities Entities { get; }
 
-		public DataSet<Relation> Set { get; }
+		public DataSet<Relation> DataSet { get; }
 
 		public Relations(DataSet<Relation> relationships, Entities entities)
 		{
-			Set = relationships;
+			DataSet = relationships;
 			Entities = entities;
 
-			Set.BeforeUnassigned += UnassignRelationship;
+			DataSet.BeforeRemoved += RemoveRelationship;
 
-			void UnassignRelationship(int id)
+			void RemoveRelationship(int id)
 			{
-				ref var relationship = ref Set.Get(id);
+				ref var relationship = ref DataSet.Get(id);
 
 				if (relationship.ParentId != Constants.InvalidId)
 				{
-					UnassignChild(relationship.ParentId, id);
+					RemoveChild(relationship.ParentId, id);
 				}
 
 				var currentChild = relationship.FirstChildId;
 				while (currentChild != Constants.InvalidId)
 				{
-					ref var childRelationship = ref Set.Get(currentChild);
+					ref var childRelationship = ref DataSet.Get(currentChild);
 					currentChild = childRelationship.NextSiblingId;
 					childRelationship.PrevSiblingId = Constants.InvalidId;
 					childRelationship.NextSiblingId = Constants.InvalidId;
@@ -40,15 +39,15 @@ namespace Massive
 		}
 
 		/// <summary>
-		/// Assigns child as first. Faster then <see cref="AssignChildAsLast"/>.
+		/// Adds child as first. Faster then <see cref="AddChildAsLast"/>.
 		/// </summary>
-		public void AssignChild(int parent, int child)
+		public void AddChild(int parent, int child)
 		{
-			Assert.IsAlive(Entities, parent);
-			Assert.IsAlive(Entities, child);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, parent);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, child);
 
-			ref var parentRelationship = ref Set.Get(parent);
-			ref var childRelationship = ref Set.Get(child);
+			ref var parentRelationship = ref DataSet.Get(parent);
+			ref var childRelationship = ref DataSet.Get(child);
 
 			if (childRelationship.ParentId == parent)
 			{
@@ -57,7 +56,7 @@ namespace Massive
 
 			if (childRelationship.ParentId != Constants.InvalidId)
 			{
-				UnassignChild(childRelationship.ParentId, child);
+				RemoveChild(childRelationship.ParentId, child);
 			}
 
 			childRelationship.ParentId = parent;
@@ -67,13 +66,13 @@ namespace Massive
 			childRelationship.NextSiblingId = nextChild;
 		}
 
-		public void AssignChildAsLast(int parent, int child)
+		public void AddChildAsLast(int parent, int child)
 		{
-			Assert.IsAlive(Entities, parent);
-			Assert.IsAlive(Entities, child);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, parent);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, child);
 
-			ref var parentRelationship = ref Set.Get(parent);
-			ref var childRelationship = ref Set.Get(child);
+			ref var parentRelationship = ref DataSet.Get(parent);
+			ref var childRelationship = ref DataSet.Get(child);
 
 			if (childRelationship.ParentId == parent)
 			{
@@ -82,7 +81,7 @@ namespace Massive
 
 			if (childRelationship.ParentId != Constants.InvalidId)
 			{
-				UnassignChild(childRelationship.ParentId, child);
+				RemoveChild(childRelationship.ParentId, child);
 			}
 
 			childRelationship.ParentId = parent;
@@ -94,23 +93,23 @@ namespace Massive
 			else
 			{
 				var currentChild = parentRelationship.FirstChildId;
-				ref var currentRelationship = ref Set.Get(currentChild);
+				ref var currentRelationship = ref DataSet.Get(currentChild);
 				while (currentRelationship.NextSiblingId != Constants.InvalidId)
 				{
 					currentChild = currentRelationship.NextSiblingId;
-					currentRelationship = ref Set.Get(currentChild);
+					currentRelationship = ref DataSet.Get(currentChild);
 				}
 				currentRelationship.NextSiblingId = child;
 				childRelationship.PrevSiblingId = currentChild;
 			}
 		}
 
-		public void UnassignChild(int parent, int child)
+		public void RemoveChild(int parent, int child)
 		{
-			Assert.IsAlive(Entities, parent);
-			Assert.IsAlive(Entities, child);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, parent);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, child);
 
-			ref var childRelationship = ref Set.Get(child);
+			ref var childRelationship = ref DataSet.Get(child);
 
 			if (childRelationship.ParentId != parent)
 			{
@@ -119,16 +118,16 @@ namespace Massive
 
 			if (childRelationship.PrevSiblingId != Constants.InvalidId)
 			{
-				Set.Get(childRelationship.PrevSiblingId).NextSiblingId = childRelationship.NextSiblingId;
+				DataSet.Get(childRelationship.PrevSiblingId).NextSiblingId = childRelationship.NextSiblingId;
 			}
 			else
 			{
-				Set.Get(parent).FirstChildId = childRelationship.NextSiblingId;
+				DataSet.Get(parent).FirstChildId = childRelationship.NextSiblingId;
 			}
 
 			if (childRelationship.NextSiblingId != Constants.InvalidId)
 			{
-				Set.Get(childRelationship.NextSiblingId).PrevSiblingId = childRelationship.PrevSiblingId;
+				DataSet.Get(childRelationship.NextSiblingId).PrevSiblingId = childRelationship.PrevSiblingId;
 			}
 
 			childRelationship.PrevSiblingId = Constants.InvalidId;
@@ -138,9 +137,9 @@ namespace Massive
 
 		public int GetLastChild(int parent)
 		{
-			Assert.IsAlive(Entities, parent);
+			EntityNotAliveException.ThrowIfEntityDead(Entities, parent);
 			
-			ref var relationship = ref Set.Get(parent);
+			ref var relationship = ref DataSet.Get(parent);
 
 			if (relationship.FirstChildId == Constants.InvalidId)
 			{
@@ -148,12 +147,12 @@ namespace Massive
 			}
 
 			var child = relationship.FirstChildId;
-			ref var childRelationship = ref Set.Get(relationship.FirstChildId);
+			ref var childRelationship = ref DataSet.Get(relationship.FirstChildId);
 
 			while (childRelationship.NextSiblingId != Constants.InvalidId)
 			{
 				child = childRelationship.NextSiblingId;
-				childRelationship = ref Set.Get(child);
+				childRelationship = ref DataSet.Get(child);
 			}
 
 			return child;

@@ -11,9 +11,9 @@ namespace Massive
 
 		public DataSet<Hierarchy> Components { get; }
 
-		public ListAllocator<Entity> Allocator { get; }
+		public AutoAllocator<Entity> Allocator { get; }
 
-		public Hierarchies(DataSet<Hierarchy> components, Entities entities, ListAllocator<Entity> allocator)
+		public Hierarchies(DataSet<Hierarchy> components, Entities entities, AutoAllocator<Entity> allocator)
 		{
 			Components = components;
 			Entities = entities;
